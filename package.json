@@ -1,0 +1,35 @@
+{
+  "name": "vision_india_services",
+  "version": "1.0.0",
+  "description": "This application is to gain ease in Bill creation and many other operations related to bills and some Admin & user relationship management works. At the end we can say - This application makes it easier to create bills and handle other related tasks as well. It also helps to manage the relationship between admins and users, making everything work smoothly.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+  },
+  "keywords": [
+    "vision_india_services",
+    "bill_application",
+    "mr_kumar",
+    "backend_api_application",
+    "node",
+    "express",
+    "mongo_db"
+  ],
+  "author": "mr kumar, mr kuldeep, mr sonu, mr saini",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cloudinary": "^2.6.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.14.2",
+    "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
