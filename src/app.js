@@ -13,7 +13,7 @@ app.use(cookieParser());
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "16kb" }));
-import { routeVersion } from "./constent.js";
+import { routeVersion } from "./constant.js";
 import homeRouters from './routes/home.routes.js'
 app.use(`${routeVersion}/`, homeRouters)
 
