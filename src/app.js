@@ -13,8 +13,9 @@ app.use(cookieParser());
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "16kb" }));
-
-// app.use('')
+import { routeVersion } from "./constent.js";
+import homeRouters from './routes/home.routes.js'
+app.use(`${routeVersion}/`, homeRouters)
 
 app.on("error", (error) => {
   console.error(`Error occured in application :- ${error}`);
