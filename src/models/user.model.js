@@ -27,10 +27,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["M", "F", "O"],
       required: true,
+      uppercase: true,
     },
     role: {
       type: String,
-      enum: ["admin", "user"],
+      lowercase: true,
+      enum: ["admin", "user", "firm"],
       default: "user",
     },
     worksUnder: [
@@ -45,6 +47,10 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    firm: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Firm",
+    },
     password: {
       type: String,
     },
@@ -57,7 +63,6 @@ const userSchema = new mongoose.Schema(
     },
     refreshToken: {
       type: String,
-      required: true,
     },
     address: {
       type: String,
@@ -67,11 +72,13 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.pre("save", function (next) {
+userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     return next();
   }
-  this.password = bcrypt.hash(this.password, 12);
+  console.log("in pre save encrypt pass")
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
 });
 
 userSchema.methods.passwordCheck = async function (password) {

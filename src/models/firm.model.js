@@ -16,8 +16,10 @@ const firmSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      unique: true,
     },
-    DealingIn: {
+    password:String,
+    dealingIn: {
       type: String,
       required: true,
       // default: " LT, HT, EHT AND GRID SUB STATION WORKS WITH GOVT. AND SEMI GOVT. AGENCIES",
@@ -35,7 +37,7 @@ const firmSchema = new mongoose.Schema(
       // default: "2428/16",
       trim: true,
     },
-    gmail: {
+    email: {
       type: String,
       required: true,
       trim: true,
@@ -49,7 +51,6 @@ const firmSchema = new mongoose.Schema(
     },
     mobile02: {
       type: Number,
-      required: true,
       trim: true,
       unique: true,
     },
@@ -57,6 +58,19 @@ const firmSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      unique: true,
+    },
+    role: {
+      type: String,
+      lowercase: true,
+      required: true,
+      enum: ["admin", "user", "firm"],
+      default: "firm",
+    },
+    avatar: String,
+    extraPremiumCharges: Number,
+    refreshToken: {
+      type: String,
     },
     availableAdmins: [
       {
@@ -68,4 +82,18 @@ const firmSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+firmSchema.pre("save", function (next) {
+  if (!this.isModified("password")) {
+    return next();
+  }
+  this.password = bcrypt.hash(this.password, 12);
+});
+
+firmSchema.methods.passwordCheck = async function (password) {
+  return await bcrypt.compare(password, this.password);
+};
+
+firmSchema.methods.generateToken = async function (data, secret, expiresIn) {
+  return await jwt.sign(data, secret, expiresIn);
+};
 export const Firm = mongoose.model("Firm", firmSchema);

@@ -25,12 +25,14 @@ const adminSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
+      uppercase: true,
       enum: ["M", "F", "O"],
       required: true,
     },
     role: {
       type: String,
-      enum: ["admin", "user"],
+      lowercase: true,
+      enum: ["admin", "user", "firm"],
       default: "admin",
     },
     password: {
@@ -45,14 +47,15 @@ const adminSchema = new mongoose.Schema(
     },
     refreshToken: {
       type: String,
-      required: true,
     },
     address: {
       type: String,
       required: true,
     },
-    firmName: String,
-    firmLogo: String,
+    firm: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Firm",
+    },
     availableUsers: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
