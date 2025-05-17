@@ -75,14 +75,15 @@ adminSchema.pre("save", function (next) {
     return next();
   }
   this.password = bcrypt.hash(this.password, 12);
+  next();
 });
 
 adminSchema.methods.passwordCheck = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-adminSchema.methods.generateToken = async function (data, secret, expiresIn) {
-  return await jwt.sign(data, secret, expiresIn);
+adminSchema.methods.generateToken =  function (data, secret, expiresIn) {
+  return jwt.sign(data, secret, {expiresIn});
 };
 
 export const Admin = mongoose.model("Admin", adminSchema);

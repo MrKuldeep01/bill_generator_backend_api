@@ -23,7 +23,6 @@ export const Validator = {
     return regex.test(str);
   },
   testEmptyCheck(arr) {
-    console.log("in test validator");
     if (arr.some((item) => item.trim().length === 0)) {
       console.log("Some fields are still empty!");
       return {code:400, message:"Please check all required fields!"};

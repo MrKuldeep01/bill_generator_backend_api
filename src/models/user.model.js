@@ -76,7 +76,6 @@ userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     return next();
   }
-  console.log("in pre save encrypt pass")
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
@@ -85,8 +84,8 @@ userSchema.methods.passwordCheck = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-userSchema.methods.generateToken = async function (data, secret, expiresIn) {
-  return await jwt.sign(data, secret, expiresIn);
+userSchema.methods.generateToken = function (data, secret, expiresIn) {
+  return jwt.sign(data, secret,{ expiresIn});
 };
 
 export const User = mongoose.model("User", userSchema);

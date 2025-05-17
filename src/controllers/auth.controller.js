@@ -30,14 +30,12 @@ const helperObj = {
           "We are facing an issue while uploading image on cloud, sorry!"
         );
       }
-      console.log(`avatarCloud: \n${avatarCloud}`);
+      console.log("Avatar uploaded to Cloudinary");
       return avatarCloud?.url || "";
     }
   },
   emailAndMobileTypeCheck(email, mobile01, mobile02 = null) {
-    console.log("in helper obj");
     if (!Validator.isEmail(email)) {
-      console.log("email is false");
       return { code: 400, message: `Email id is not proper!` };
     } else if (!Validator.isMobileNumber(mobile01)) {
       return { code: 400, message: `Mobile number is not proper!` };
@@ -61,20 +59,16 @@ const helperObj = {
     secretAcc,
     expiryForAcc
   ) {
-    console.log("in tokengenerater fun for :");
-    console.log(entity.username);
-    const refreshToken = await entity.methods.generateToken(
+    const refreshToken = entity.generateToken(
       dataForRef,
       secretRef,
       expiryForRef
     );
-    const accessToken = await entity.methods.generateToken(
+    const accessToken = entity.generateToken(
       dataForAcc,
       secretAcc,
       expiryForAcc
     );
-    console.log(refreshToken);
-    console.log(accessToken);
     return { refreshToken, accessToken };
   },
 };
@@ -89,9 +83,7 @@ export const Register = asyncHandler(async function (req, res) {
   // send res and tokens
 
   let role = req.body["role"];
-  console.log("In register controller 01: ");
   if (!role || role.trim().length === 0) {
-    console.log("role check ");
     return res
       .status(400)
       .json(
@@ -102,20 +94,17 @@ export const Register = asyncHandler(async function (req, res) {
       );
   }
   role = String(role).trim();
-
+  console.log("Register API called with role:", role);
   switch (role) {
     case "user": {
-      console.log("switch user");
       await regUser();
       break;
     }
     case "admin": {
-      console.log("switch admin");
       await regAdmin();
       break;
     }
     case "firm": {
-      console.log("switch firm");
       await regFirm();
       break;
     }
@@ -124,8 +113,6 @@ export const Register = asyncHandler(async function (req, res) {
   // === business logic===
   async function regUser() {
     // get data
-    console.log("register user fun begin 03");
-
     let { fullname, username, email, gender, password, mobile, address } =
       req.body;
     const dataArray = [
@@ -143,7 +130,6 @@ export const Register = asyncHandler(async function (req, res) {
       let { code, message } = isDataEmpty;
       return res.status(code).json(new ApiError(code, message));
     }
-    console.log("check for empty data 05");
     // email & mobile no. type check
     fullname = String(fullname.trim());
     username = String(username.trim());
@@ -152,20 +138,20 @@ export const Register = asyncHandler(async function (req, res) {
     password = String(password.trim());
     mobile = Number(mobile.trim());
     address = String(address.trim());
+    console.log(
+      `New user is visited to registere: ${fullname} with username: (${username}) as ${role} from [address: ${address}] ${
+        gender == "F" ? ". She is" : ". He is"
+      } having following email: ${email}`
+    );
+
     const isEmailOrMobileWrong = helperObj.emailAndMobileTypeCheck(
       email,
       mobile
     );
     if (isEmailOrMobileWrong) {
-      console.log("in email mobile checking");
       const { code, message } = isEmailOrMobileWrong;
-      console.log(`code ${code}, message ${message}`);
       return res.status(code).json(new ApiError(code, message));
     }
-    console.log(
-      `check format for email [${email}] & mobile num [${mobile}] 06`
-    );
-
     // existence check
     const isExistingUser = await helperObj.isExistingUserOrAdmin(
       userModel,
@@ -177,11 +163,9 @@ export const Register = asyncHandler(async function (req, res) {
       let { code, message } = isExistingUser;
       return res.status(code).json(new ApiError(code, message));
     }
-
-    console.log(`existence check for ${fullname} 07`);
     // handle image
     const avatarCloud = await helperObj.avatarHandler(req);
-    console.log("creating db obj");
+
     // create database object
     let user = await userModel.create({
       fullname,
@@ -194,10 +178,19 @@ export const Register = asyncHandler(async function (req, res) {
       role,
       "avatar": avatarCloud,
     });
-    if(!user){
-      return res.status(501).json(new ApiError(501,"not good for user register!"))
+    if (!user) {
+      return res
+        .status(500)
+        .json(
+          new ApiError(
+            500,
+            "Server is facing an issue while registeration for " + username
+          )
+        );
     }
-console.log(user);
+
+    console.log(`${user?.fullname} saved successfully with ID: ${user?._id}`);
+
     const { refreshToken, accessToken } = await helperObj.generateTokens(
       user,
       { _id: user?._id },
@@ -213,20 +206,8 @@ console.log(user);
       config.accessExpiry
     );
 
-    console.log(`data to be sent for tokens : \n
-    dataForRef: \n${{ _id: user?._id }},
-    secretRef: \n${config.refreshSecret},
-    expiryForRef: \n${config.refreshExpiry},
-    dataForAcc: \n${{
-      _id: user?._id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    }},
-    secretAcc: \n${config.accessSecret},
-    expiryForAcc: \n${config.accessExpiry}\n\n\n`);
     console.log(
-      `data saved to db\nrefresh token : ${refreshToken}\naccess token: ${accessToken}`
+      `Generated access and refresh tokens for user: ${user?.username}`
     );
 
     user.refreshToken = refreshToken;
@@ -241,7 +222,7 @@ console.log(user);
         .json(
           new ApiError(
             500,
-            "auth controller error :: Server is unable to register user due to unknown issues."
+            "Auth controller error :: Server is unable to register user due to unknown issues."
           )
         );
     }
