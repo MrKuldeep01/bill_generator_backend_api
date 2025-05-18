@@ -20,9 +20,9 @@ const helperObj = {
     } else return null;
   },
   // handle avatar image: check & upload on cloud
-  async avatarHandler(req) {
+  async avatarHandler(requestObject) {
     let avatarCloud = "";
-    const avatarLocal = req?.file?.path;
+    const avatarLocal = requestObject?.file?.path;
     if (avatarLocal) {
       avatarCloud = await UploadImage(avatarLocal);
       if (!avatarCloud?.url) {
@@ -130,7 +130,6 @@ export const Register = asyncHandler(async function (req, res) {
       let { code, message } = isDataEmpty;
       return res.status(code).json(new ApiError(code, message));
     }
-    // email & mobile no. type check
     fullname = String(fullname.trim());
     username = String(username.trim());
     email = String(email.trim());
@@ -139,11 +138,11 @@ export const Register = asyncHandler(async function (req, res) {
     mobile = Number(mobile.trim());
     address = String(address.trim());
     console.log(
-      `New user is visited to registere: ${fullname} with username: (${username}) as ${role} from [address: ${address}] ${
+      `New visiter to registere: ${fullname} with username: (${username}) as ${role} from [address: ${address}] ${
         gender == "F" ? ". She is" : ". He is"
       } having following email: ${email}`
     );
-
+    // email & mobile no. type check
     const isEmailOrMobileWrong = helperObj.emailAndMobileTypeCheck(
       email,
       mobile
@@ -176,7 +175,7 @@ export const Register = asyncHandler(async function (req, res) {
       mobile,
       address,
       role,
-      "avatar": avatarCloud,
+      avatar: avatarCloud,
     });
     if (!user) {
       return res
@@ -240,56 +239,193 @@ export const Register = asyncHandler(async function (req, res) {
       );
   }
 
-  function regAdmin() {
-    // const { fullname, username, email, gender, password, mobile, address } =
-    //   req.body;
-    // const dataArray = [
-    //   fullname,
-    //   username,
-    //   email,
-    //   gender,
-    //   password,
-    //   mobile,
-    //   address,
-    // ];
-    res.status(200).json(
-      new ApiResponse(200, "we are working of Admin registration!", {
-        requestBody: req.body,
-        avatar: req.file.path,
-      })
+  async function regAdmin() {
+    // get data from body inside request object
+    let { fullname, username, email, gender, password, mobile, address } =
+      req.body;
+    const dataArray = [
+      fullname,
+      username,
+      email,
+      gender,
+      password,
+      mobile,
+      address,
+    ];
+    // validate for empty fields
+    const isDataEmpty = Validator.testEmptyCheck(dataArray);
+    if (isDataEmpty) {
+      const { code, message } = isDataEmpty;
+      return res.status(code).json(new ApiError(code, message));
+    }
+    //type safety
+    fullname = String(fullname.trim());
+    username = String(username.trim());
+    email = String(email.trim());
+    gender = String(gender.trim());
+    password = String(password.trim());
+    mobile = Number(mobile.trim());
+    address = String(address.trim());
+    console.log(
+      `New visiter to registere: ${fullname} with username: (${username}) as ${role} from [address: ${address}] ${
+        gender == "F" ? ". She is" : ". He is"
+      } having following email: ${email}`
     );
+    // email and mobile type check
+    const isEmailOrMobileWrong = helperObj.emailAndMobileTypeCheck(
+      email,
+      mobile
+    );
+    if (isEmailOrMobileWrong) {
+      const { code, message } = isEmailOrMobileWrong;
+      return res.status(code).json(new ApiError(code, message));
+    }
+    // existence check
+    const isExistingAdmin = await helperObj.isExistingUserOrAdmin(
+      adminModel,
+      username,
+      email,
+      mobile
+    );
+    if (isExistingAdmin) {
+      const { code, message } = isExistingAdmin;
+      return res.status(code).json(new ApiError(code, message));
+    }
+    // handle avatar image
+    const avatar = await helperObj.avatarHandler(req);
+    // hit database entry
+    const admin = await adminModel.create({
+      fullname,
+      username,
+      email,
+      gender,
+      role,
+      password,
+      mobile,
+      avatar,
+      address,
+    });
+    if (!admin) {
+      return res
+        .status(500)
+        .json(
+          new ApiError(
+            500,
+            `Auth controller :: Server is facing unknown issue during registeration for ${fullname}`
+          )
+        );
+    }
+    // generate tokens and save
+    const { refreshToken, accessToken } = await helperObj.generateTokens(
+      admin,
+      {
+        _id: admin._id,
+      },
+      config.refreshSecret,
+      config.refreshExpiry,
+      {
+        _id: admin._id,
+        email: admin.email,
+        username: admin.username,
+        role: admin.role,
+        mobile: admin.mobile,
+      },
+      config.accessSecret,
+      config.accessExpiry
+    );
+    if (!(refreshToken || accessToken)) {
+      return res
+        .status(500)
+        .json(
+          new ApiError(
+            500,
+            `Server is facing some issues in authenticating you~!`
+          )
+        );
+    }
+    admin.refreshToken = refreshToken;
+    await admin.save({ validateBeforeSave: false });
+    // recall the object with particular id to check for proper save
+    const savedAdmin = await adminModel
+      .findById(admin._id)
+      .select("-password -refreshToken");
+    if (!savedAdmin) {
+      return res
+        .status(500)
+        .json(
+          new ApiError(
+            500,
+            `Auth controller :: Server is facing unknown issues while registeration!`
+          )
+        );
+    }
+    // safelly send the response for congratulation and set cookie
+    return res
+      .cookie("accesstoken", accessToken)
+      .cookie("refreshToken", refreshToken)
+      .status(201)
+      .json(
+        new ApiResponse(
+          201,
+          `${fullname} as ${role} is registered successfully :)`,
+          savedAdmin
+        )
+      );
+
+    /* Done: response:-
+      {
+    "statusCode": 201,
+    "message": "kuldeep kumar as admin is registered successfully :)",
+    "data": {
+        "_id": "6829****b86fae****fabf61",
+        "fullname": "kuldeep kumar",
+        "username": "mrkuldeep01",
+        "email": "kuldeep@kuldeep.kuldeep",
+        "gender": "M",
+        "role": "admin",
+        "mobile": 97******43,
+        "avatar": "http://res.cloudinary.com/<********>/image/upload/v1747550271/un8zdtfgcvpm2u1vhmw7.jpg",
+        "address": "vpo bahu akbarpur, rohtak, haryana",
+        "worksBuddy": [],
+        "createdAt": "2025-05-18T06:37:52.607Z",
+        "updatedAt": "2025-05-18T06:37:52.780Z",
+        "__v": 0
+    },
+    "success": true
+    }*/
   }
-  function regFirm() {
-    // const {
-    //   name,
-    //   address,
-    //   GSTNum,
-    //   dealingIn,
-    //   licenseType,
-    //   licenseNum,
-    //   email,
-    //   mobile01,
-    //   mobile02,
-    //   UHBVNGSTNum,
-    //   extraPremiumCharges,
-    // } = req.body;
-    // const dataArray = [
-    //   name,
-    //   address,
-    //   GSTNum,
-    //   dealingIn,
-    //   licenseType,
-    //   licenseNum,
-    //   email,
-    //   mobile01,
-    //   mobile02,
-    //   UHBVNGSTNum,
-    //   extraPremiumCharges,
-    // ];
+
+  async function regFirm() {
+    const {
+      name,
+      address,
+      GSTNum,
+      dealingIn,
+      licenseType,
+      licenseNum,
+      email,
+      mobile01,
+      mobile02,
+      UHBVNGSTNum,
+      extraPremiumCharges,
+    } = req.body;
+    const dataArray = [
+      name,
+      address,
+      GSTNum,
+      dealingIn,
+      licenseType,
+      licenseNum,
+      email,
+      mobile01,
+      mobile02,
+      UHBVNGSTNum,
+      extraPremiumCharges,
+    ];
     res.status(200).json(
       new ApiResponse(200, "we are working of Firm registration!", {
         requestBody: req.body,
-        avatar: req.file.path,
+        avatar: req?.file?.path || "Not provided",
       })
     );
   }
