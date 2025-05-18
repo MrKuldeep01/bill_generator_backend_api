@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
-
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken'
 const firmSchema = new mongoose.Schema(
   {
     name: {
@@ -68,7 +69,9 @@ const firmSchema = new mongoose.Schema(
       default: "firm",
     },
     avatar: String,
-    extraPremiumCharges: Number,
+    extraPremiumCharges: {
+      type: Number,
+    },
     refreshToken: {
       type: String,
     },
@@ -78,6 +81,17 @@ const firmSchema = new mongoose.Schema(
         ref: "Admin",
       },
     ],
+    additionalFields:{
+      type: Map,
+      of:mongoose.Schema.Types.Mixed,
+      //this will hold any no. of data of any type
+      /* data like  :-
+      additionalFields:{
+      hobby: "Drawing",
+      skillLevel: 7,
+      isCertified: true and more...};
+      */
+    }
   },
   { timestamps: true }
 );

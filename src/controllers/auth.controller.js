@@ -3,6 +3,7 @@ import ApiError from "../utils/apiError.js";
 import ApiResponse from "../utils/apiResponse.js";
 import { User as userModel } from "../models/user.model.js";
 import { Admin as adminModel } from "../models/admin.model.js";
+import { Firm as firmModel } from "../models/firm.model.js";
 import { Validator } from "../utils/validator.js";
 import { UploadImage } from "../utils/cloudinary.js";
 import config from "../../config/config.js";
@@ -93,7 +94,7 @@ export const Register = asyncHandler(async function (req, res) {
         )
       );
   }
-  role = String(role).trim();
+  role = String(role.trim());
   console.log("Register API called with role:", role);
   switch (role) {
     case "user": {
@@ -204,7 +205,16 @@ export const Register = asyncHandler(async function (req, res) {
       config.accessSecret,
       config.accessExpiry
     );
-
+    if (!(refreshToken && accessToken)) {
+      return res
+        .status(500)
+        .json(
+          new ApiError(
+            500,
+            `Server is facing some issues in authenticating you~!`
+          )
+        );
+    }
     console.log(
       `Generated access and refresh tokens for user: ${user?.username}`
     );
@@ -221,7 +231,7 @@ export const Register = asyncHandler(async function (req, res) {
         .json(
           new ApiError(
             500,
-            "Auth controller error :: Server is unable to register user due to unknown issues."
+            "Auth controller error :: Server is unable to register user due to unknown issues. Please contact to developer team!"
           )
         );
     }
@@ -333,7 +343,7 @@ export const Register = asyncHandler(async function (req, res) {
       config.accessSecret,
       config.accessExpiry
     );
-    if (!(refreshToken || accessToken)) {
+    if (!(refreshToken && accessToken)) {
       return res
         .status(500)
         .json(
@@ -355,7 +365,7 @@ export const Register = asyncHandler(async function (req, res) {
         .json(
           new ApiError(
             500,
-            `Auth controller :: Server is facing unknown issues while registeration!`
+            `Auth controller :: Server is facing unknown issues while registeration! Please contact with development team~!`
           )
         );
     }
@@ -396,10 +406,11 @@ export const Register = asyncHandler(async function (req, res) {
   }
 
   async function regFirm() {
-    const {
+    let {
       name,
       address,
       GSTNum,
+      password,
       dealingIn,
       licenseType,
       licenseNum,
@@ -408,11 +419,83 @@ export const Register = asyncHandler(async function (req, res) {
       mobile02,
       UHBVNGSTNum,
       extraPremiumCharges,
+      additionalFields,
     } = req.body;
     const dataArray = [
       name,
       address,
       GSTNum,
+      password,
+      dealingIn,
+      licenseType,
+      licenseNum,
+      email,
+      mobile01,
+      UHBVNGSTNum,
+      extraPremiumCharges,
+    ];
+    // validate data
+    const isDataEmpty = Validator.testEmptyCheck(dataArray);
+    if (isDataEmpty) {
+      let { code, message } = isDataEmpty;
+      return res
+        .status(code)
+        .json(
+          new ApiError(
+            code,
+            `Please check all required fields!\nFor your reference fields are following:- [name, address, GST Number, password, dealing In, license Type, license Number, email, mobile01, UHBVN GST Number, extra Premium Charges]`
+          )
+        );
+    }
+    name = String(name.trim());
+    address = String(address.trim());
+    GSTNum = String(GSTNum.trim());
+    password = String(password.trim());
+    dealingIn = String(dealingIn.trim());
+    licenseType = String(licenseType.trim());
+    licenseNum = String(licenseNum.trim());
+    email = String(email.trim());
+    mobile01 = Number(mobile01.trim());
+    mobile02 = mobile02 ? Number(mobile02.trim()) : undefined;
+    UHBVNGSTNum = String(UHBVNGSTNum.trim());
+    extraPremiumCharges = Number(extraPremiumCharges.trim());
+    additionalFields = additionalFields || undefined;
+    console.log(
+      `New Firm visited to registere: ${name} with GST Number: (${GSTNum}) and UHBVN GST Number: ${UHBVNGSTNum} which is dealing in: ${dealingIn} from [address: ${address}] that have following email: ${email}`
+    );
+    // email & mobile no. type check
+    const isEmailOrMobileWrong = helperObj.emailAndMobileTypeCheck(
+      email,
+      mobile01,
+      mobile02
+    );
+    if (isEmailOrMobileWrong) {
+      const { code, message } = isEmailOrMobileWrong;
+      return res.status(code).json(new ApiError(code, message));
+    }
+    // existence check
+    const isExistingFirm = await firmModel.findOne({
+      $or: [{ GSTNum }, { email }, { mobile01 }, { UHBVNGSTNum }],
+    });
+    if (isExistingFirm) {
+      return res
+        .status(409)
+        .json(
+          new ApiError(
+            409,
+            `Given details like GST number, email id, mobile number, UHBVN GST number are in use, Please try to login if already registered! `
+          )
+        );
+    }
+    // handle image
+    const avatar = await helperObj.avatarHandler(req);
+
+    // create database object
+    let firm = await firmModel.create({
+      name,
+      address,
+      GSTNum,
+      password,
       dealingIn,
       licenseType,
       licenseNum,
@@ -420,13 +503,80 @@ export const Register = asyncHandler(async function (req, res) {
       mobile01,
       mobile02,
       UHBVNGSTNum,
+      role,
+      avatar,
       extraPremiumCharges,
-    ];
-    res.status(200).json(
-      new ApiResponse(200, "we are working of Firm registration!", {
-        requestBody: req.body,
-        avatar: req?.file?.path || "Not provided",
-      })
+      additionalFields,
+    });
+    if (!firm) {
+      return res
+        .status(500)
+        .json(
+          new ApiError(
+            500,
+            `Server is facing an issue while registeration for ${name}`
+          )
+        );
+    }
+
+    console.log(`${firm?.name} saved successfully with ID: ${firm?._id}`);
+
+    const { refreshToken, accessToken } = await helperObj.generateTokens(
+      firm,
+      { _id: firm?._id },
+      config.refreshSecret,
+      config.refreshExpiry,
+      {
+        _id: firm?._id,
+        name: firm.name,
+        GSTNum: firm.GSTNum,
+        mobile01: firm.mobile01,
+        UHBVNGSTNum: firm.UHBVNGSTNum,
+        email: firm.email,
+        role: firm.role,
+      },
+      config.accessSecret,
+      config.accessExpiry
     );
+    if (!(refreshToken && accessToken)) {
+      return res
+        .status(500)
+        .json(
+          new ApiError(
+            500,
+            `Server is facing some issues in authenticating you! Please contact to developer team~!`
+          )
+        );
+    }
+    console.log(`Generated access and refresh tokens for firm: ${firm?.name}`);
+
+    firm.refreshToken = refreshToken;
+    await firm.save({ validateBeforeSave: false });
+    // Is user save properly?
+    const savedFirm = await firmModel
+      .findById(firm._id)
+      .select("-password -refreshToken");
+    if (!savedFirm) {
+      return res
+        .status(500)
+        .json(
+          new ApiError(
+            500,
+            "Auth controller :: Server is unable to register firm due to unknown issues. Please contact to developer team!"
+          )
+        );
+    }
+    // retrun response with proper tokens in cookies and saved user data
+    return res
+      .cookie("accessToken", accessToken)
+      .cookie("refreshToken", refreshToken)
+      .status(201)
+      .json(
+        new ApiResponse(
+          201,
+          `${name} as ${role} is registered successfully.`,
+          savedFirm
+        )
+      );
   }
 });
