@@ -6,6 +6,7 @@ const home = asyncHandler(async function (req, res) {
   res.status(200).json({
     success: true,
     message: "we are ready to grind ~!",
+    data: req
   });
 });
 
