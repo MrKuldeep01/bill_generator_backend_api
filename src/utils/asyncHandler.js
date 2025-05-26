@@ -21,4 +21,4 @@ const asyncHandler = (fn)=>{
 //   };
 // };
 
-// export default asyncHandler;
+export default asyncHandler;
