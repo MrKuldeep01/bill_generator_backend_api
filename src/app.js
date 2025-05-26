@@ -15,9 +15,7 @@ app.use(express.json({ limit: "16kb" }));
 import { routeVersion } from "./constant.js";
 import homeRouters from './routes/home.routes.js'
 import authRouters from "./routes/auth.routes.js"
-import testRouters from "./routes/test.routes.js"
 app.use(`/${routeVersion}`, homeRouters)
-app.use(`/test`,testRouters)
 app.use(`/${routeVersion}/auth`, authRouters)
 
 app.on("error", (error) => {
