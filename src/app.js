@@ -7,10 +7,10 @@ app.use(cookieParser());
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "16kb" }));
-import homeRouters from './routes/home.routes.js'
-import authRouters from "./routes/auth.routes.js"
-app.use(`/api/v1`, homeRouters)
-app.use(`/api/v1/auth`, authRouters)
+import homeRouters from "./routes/home.routes.js";
+import authRouters from "./routes/auth.routes.js";
+app.use(`/api/v1`, homeRouters);
+app.use(`/api/v1/auth`, authRouters);
 
 app.on("error", (error) => {
   console.error(`Error occured in application :- ${error}`);
