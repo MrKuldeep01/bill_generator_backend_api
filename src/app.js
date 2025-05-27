@@ -3,13 +3,13 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 const app = express();
 app.use(cors());
+app.use(cors());
 app.use(cookieParser());
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "16kb" }));
 import homeRouters from './routes/home.routes.js'
 import authRouters from "./routes/auth.routes.js"
-console.log(routeVersion);
 app.use(`/api/v1`, homeRouters)
 app.use(`/api/v1/auth`, authRouters)
 
